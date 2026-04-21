@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Swim Game</title>
+<style>
+body { margin:0; overflow:hidden; font-family:sans-serif; }
+#game { position:relative; width:100vw; height:100vh; background:#aee; }
+#player {
+  width:40px; height:40px;
+  background:#0077ff;
+  position:absolute;
+  border-radius:50%;
+}
+#ui {
+  position:absolute; top:10px; left:10px; color:#000;
+}
+#startScreen, #gameOver {
+  position:absolute; width:100%; height:100%;
+  display:flex; justify-content:center; align-items:center;
+  background:rgba(0,0,0,0.5); color:#fff; flex-direction:column;
+}
+button { padding:10px 20px; font-size:16px; }
+</style>
+</head>
+
+<body>
+
+<div id="game">
+  <div id="player"></div>
+
+  <div id="ui">
+    🫁 <span id="oxygen">100</span><br>
+    🏆 <span id="score">0</span>
+  </div>
+
+  <div id="startScreen">
+    <h1>Swim Survival</h1>
+    <button onclick="startGame()">START</button>
+  </div>
+
+  <div id="gameOver" style="display:none;">
+    <h1>Game Over</h1>
+    <p id="finalScore"></p>
+    <button onclick="restart()">RESTART</button>
+  </div>
+</div>
+
+<script>
+let player = document.getElementById("player");
+
+let x, y, vx, vy;
+let oxygen, score;
+let running = false;
+
+function startGame(){
+  document.getElementById("startScreen").style.display="none";
+
+  x = window.innerWidth/2;
+  y = window.innerHeight/2;
+  vx = 0; vy = 0;
+  oxygen = 100;
+  score = 0;
+  running = true;
+
+  requestPermission();
+  gameLoop();
+}
+
+function restart(){
+  location.reload();
+}
+
+function requestPermission(){
+  if(typeof DeviceOrientationEvent.requestPermission === 'function'){
+    DeviceOrientationEvent.requestPermission().then(res=>{
+      if(res==="granted"){
+        window.addEventListener("deviceorientation", handleTilt);
+      }
+    });
+  } else {
+    window.addEventListener("deviceorientation", handleTilt);
+  }
+}
+
+function handleTilt(e){
+  if(!running) return;
+
+  vx += e.gamma * 0.02;
+  vy += e.beta * 0.02;
+}
+
+document.body.addEventListener("touchstart", ()=>{
+  if(!running) return;
+  vy -= 2; // 킥 (위로 추진)
+});
+
+function gameLoop(){
+  if(!running) return;
+
+  // 물 저항
+  vx *= 0.98;
+  vy *= 0.98;
+
+  x += vx;
+  y += vy;
+
+  // 벽 제한
+  x = Math.max(0, Math.min(window.innerWidth-40, x));
+  y = Math.max(0, Math.min(window.innerHeight-40, y));
+
+  // 산소 (위쪽 = 공기)
+  if(y < window.innerHeight * 0.3){
+    oxygen += 0.5;
+  } else {
+    oxygen -= 0.2;
+  }
+
+  oxygen = Math.max(0, Math.min(100, oxygen));
+
+  // 점수 증가
+  score += 1;
+
+  // UI 업데이트
+  player.style.left = x + "px";
+  player.style.top = y + "px";
+
+  document.getElementById("oxygen").innerText = Math.floor(oxygen);
+  document.getElementById("score").innerText = score;
+
+  // 게임 오버
+  if(oxygen <= 0){
+    endGame();
+    return;
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+function endGame(){
+  running = false;
+  document.getElementById("gameOver").style.display="flex";
+  document.getElementById("finalScore").innerText = "Score: " + score;
+}
+</script>
+
+</body>
+</html>
